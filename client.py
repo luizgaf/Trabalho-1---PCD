@@ -1,5 +1,25 @@
 import socket
 
+def redirect(port = 5000):
+    client_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+    try:
+        print(f"Tentando Conexão porta: {port}")
+        client_sock.connect(('127.0.0.1', port))
+        print(f"Conexão na porta {port} estabelecida")
+
+        while True:
+            port = int((client_sock.recv(1024)).decode())
+            return port
+
+        
+    except Exception as e:
+        print(f"Error: {e}")
+    except KeyboardInterrupt:
+        print("Finalizando...")
+    finally:
+        client_sock.close()
+
 def connect(port):
     client_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -24,5 +44,4 @@ def connect(port):
         client_sock.close()
 
 if __name__ == "__main__":
-    porta = 5000
-    connect(porta)
+    connect(redirect()) # porta padra pra solicitar redirect

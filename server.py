@@ -23,11 +23,9 @@ def client_handle(client_sock, port):
     finally:
         client_sock.close()
 
-
 def server(port):
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server.bind(('0.0.0.0', port))
-    server.listen((3)) # backlog
     print(f"Listening na Porta: {port} \n")
 
     try:
@@ -42,5 +40,34 @@ def server(port):
     finally:
         server.close()
 
+def ports_distrib():
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.bind(('0.0.0.0', 5000))
+    server.listen((10)) # backlog
+
+    ports = {
+            5001:True,
+            5002:True,
+            5003:True,
+            5004:True,
+            5005:True
+    }
+
+    try:
+        while True:
+            client_sock, portClient = server.accept()
+            print(f"Conexão aceita: da porta {portClient}")
+            port = int()
+            for port, status in ports.items():
+                if status == True:
+                    port = port
+                    break
+
+            client_sock.sendall(str(port).encode())
+            server(port)
+    finally:
+        print("Ok")
+    
+
 if __name__ == "__main__":
-    server(5000)
+    ports_distrib()
