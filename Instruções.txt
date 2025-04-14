@@ -1,0 +1,34 @@
+INSTRUÇÕES DE USO - SISTEMA DE RESERVA DE ASSENTOS
+
+Descrição do Sistema:
+Sistema cliente-servidor para reserva de assentos de cinema, desenvolvido em Python utilizando:
+- socket para comunicação em rede
+- threading para concorrência
+- Mecanismos de lock para sincronização
+
+Arquitetura do Sistema:
+Servidor (server.py)
+
+    Porta principal: 5000 (TCP)
+        Aceita até 10 conexões simultâneas
+        Redireciona clientes para portas secundárias (5001-5005)
+
+    Portas secundárias:
+        5 portas disponíveis (5001-5005)
+        Cada porta roda em uma thread separada
+        Utiliza lock para proteger recursos compartilhados
+
+Cliente (cliente.py)
+    Interface simples via terminal
+    Conecta-se automaticamente ao servidor
+
+Como Executar:
+
+Passo a Passo
+1 - Iniciar o servidor: python server.py
+
+2 - Iniciar clientes (em terminais separados): python cliente.py
+
+3 - Interação: No cliente, siga as instruções no terminal
+
+Monitoramento: Logs do servidor exibidos no terminal do mesmo.

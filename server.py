@@ -13,67 +13,77 @@ class CinemaServer:
             for port, available in self.ports.items():
                 if available:
                     self.ports[port] = False
+                    print(f"Porta {port} alocada para novo cliente")
                     return port
+        print("Todas as portas estão ocupadas")
         return None
 
     def release_port(self, port):
         with self.port_lock:
             self.ports[port] = True
+            print(f"Porta {port} liberada")
 
-    def get_seats_matrix(self):
+    def get_seats_list(self):
         with self.lock:
-            matrix = []
-            # Cabeçalho com apenas 1 espaço entre os números
-            header = "   " + " ".join(str(i) for i in range(1, 11))
-            matrix.append(header)
-            
+            seats_list = []
             for row in "ABCDEFGHIJ":
-                row_line = f"{row} |"
+                row_seats = []
                 for col in range(1, 11):
                     seat = f"{row}{col}"
-                    status = "X" if self.seats[seat] else "O"
-                    row_line += f" {status}"
-                matrix.append(row_line)
-            return "\n".join(matrix)
+                    row_seats.append(seat if not self.seats[seat] else "--")
+                seats_list.append(" ".join(row_seats))
+            return "\n".join(seats_list)
 
     def handle_client(self, client_sock, port):
         try:
-            print(f"Conexão estabelecida na porta {port}")
+            print(f"\n[Cliente conectado] Porta: {port}")
             welcome_msg = "Bem-vindo ao cinema\nFILME: VINGADORES\n"
-            seats_display = self.get_seats_matrix()
-            client_sock.sendall((welcome_msg + "Mapa de Assentos:\n" + seats_display + "\n").encode('utf-8'))
+            seats_display = self.get_seats_list()
+            full_msg = welcome_msg + "Assentos:\n" + seats_display + "\n"
+            client_sock.sendall(full_msg.encode('utf-8'))
+            print(f"[Mapa enviado] Para cliente na porta {port}")
 
             while True:
                 data = client_sock.recv(2048).decode('utf-8').strip()
                 if not data:
+                    print(f"[Cliente desconectado] Porta: {port}")
                     break
+
+                print(f"[Solicitação recebida] Porta {port}: {data}")
 
                 if data.lower() == 'sair':
+                    print(f"[Cliente encerrou] Porta: {port}")
                     break
                 elif data.lower() == 'listar':
-                    seats_display = self.get_seats_matrix()
-                    client_sock.sendall(("Mapa de Assentos Atualizado:\n" + seats_display + "\n").encode('utf-8'))
+                    seats_display = self.get_seats_list()
+                    client_sock.sendall(("Assentos:\n" + seats_display + "\n").encode('utf-8'))
+                    print(f"[Mapa reenviado] Para porta {port}")
                 else:
                     response = self.reserve_seat(data)
-                    seats_display = self.get_seats_matrix()
-                    client_sock.sendall((response + "\nMapa de Assentos Atualizado:\n" + seats_display + "\n").encode('utf-8'))
+                    seats_display = self.get_seats_list()
+                    full_response = response + "\nAssentos:\n" + seats_display + "\n"
+                    client_sock.sendall(full_response.encode('utf-8'))
+                    print(f"[Reserva processada] Porta {port}: {data} - {response}")
 
         except Exception as e:
-            print(f"Erro: {e}")
+            print(f"[Erro] Porta {port}: {e}")
         finally:
             client_sock.close()
             self.release_port(port)
-            print(f"Conexão encerrada na porta {port}")
 
     def reserve_seat(self, seat):
         with self.lock:
+            seat = seat.upper()
             if seat in self.seats:
                 if not self.seats[seat]:
                     self.seats[seat] = True
+                    print(f"[Assento reservado] {seat}")
                     return f"Assento {seat} reservado com sucesso!"
                 else:
+                    print(f"[Tentativa de reserva] {seat} já ocupado")
                     return f"Assento {seat} já está ocupado."
             else:
+                print(f"[Assento inválido] Tentativa: {seat}")
                 return f"Assento {seat} inválido."
 
     def start_port_distributor(self):
@@ -81,17 +91,19 @@ class CinemaServer:
         distributor.bind(('0.0.0.0', 5000))
         distributor.listen(10)
 
-        print("Distribuidor de portas rodando na porta 5000")
+        print("\n=== Servidor Iniciado ===")
+        print("Distribuidor principal na porta 5000")
 
         try:
             while True:
                 client_sock, addr = distributor.accept()
-                print(f"Conexão aceita de {addr}")
+                print(f"\n[Nova conexão] Endereço: {addr}")
 
                 port = self.get_available_port()
                 if port:
                     client_sock.sendall(str(port).encode())
                     client_sock.close()
+                    print(f"[Redirecionamento] Cliente enviado para porta {port}")
 
                     server_thread = threading.Thread(target=self.start_server, args=(port,))
                     server_thread.daemon = True
@@ -99,9 +111,10 @@ class CinemaServer:
                 else:
                     client_sock.sendall(b"Servidor cheio. Tente novamente mais tarde.")
                     client_sock.close()
+                    print("[Servidor cheio] Cliente rejeitado")
 
         except KeyboardInterrupt:
-            print("Encerrando distribuidor de portas")
+            print("\n=== Encerrando servidor ===")
         finally:
             distributor.close()
 
@@ -110,7 +123,7 @@ class CinemaServer:
         server.bind(('0.0.0.0', port))
         server.listen(5)
 
-        print(f"Servidor de cinema rodando na porta {port}")
+        print(f"Servidor secundário iniciado na porta {port}")
 
         try:
             while True:
